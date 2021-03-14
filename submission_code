@@ -1,0 +1,78 @@
+
+
+import numpy as np # linear algebra
+import pandas as pd # data processing, CSV file I/O (e.g. pd.read_csv)
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+
+# import libraries
+import numpy as np
+import pandas as pd
+
+
+#1/30/21 going to make sample train set
+sample_train_data = train_data.query('date <= 5')
+sample_train_data.describe()
+
+# 1/30/21 remove rows that have var weight = 0
+data=sample_train_data[sample_train_data.weight!=0]
+
+# 1/30/21 make features column, from "SIMPLE" XGB CODE
+features = [c for c in data.columns if 'feature' in c]
+target = 'resp'
+
+# 1/30/21 fill NAN w mean
+data = data.apply(lambda x: x.fillna(x.mean()),axis=0)
+
+# Split into features X and target Y
+X = data.loc[:, features]
+Y = (data.loc[:, target] > 0).astype(int)
+
+
+
+#1/31/21split up dataset into training and test (from my housing data code)
+from sklearn.model_selection import train_test_split
+
+X_train, X_valid, y_train, y_valid = train_test_split(X, Y,
+                                                     train_size = 0.8,
+                                                     test_size = 0.2,
+                                                     random_state= 0)
+# 2/1/20 going to try some Feature Scaling and see how the random forests look from there
+from sklearn.preprocessing import StandardScaler
+
+sc = StandardScaler()
+X_train_sc = sc.fit_transform(X_train)
+X_valid_sc = sc.transform(X_valid)
+#01/31/2021 going to use random forest regression model
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.datasets import make_classification
+
+#2/1/21 random forest of scaled features
+
+clf = RandomForestClassifier(n_estimators = 100,max_depth=20, random_state=0)
+clf.fit(X_train_sc , y_train)
+
+y_pred_sc = clf.predict(X_valid_sc)
+from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+
+print(confusion_matrix(y_valid,y_pred_sc))
+print(classification_report(y_valid,y_pred_sc))
+print(accuracy_score(y_valid, y_pred_sc))
+
+print(y_valid)
+print(y_pred_sc)
+
+import janestreet
+env = janestreet.make_env() # initialize the environment
+iter_test = env.iter_test() # an iterator which loops over the test set
+for (test_df, sample_prediction_df) in iter_test:
+    wt = test_df.iloc[0].weight
+    if(wt == 0):
+        sample_prediction_df.action = 0 
+    else:
+        sample_prediction_df.action = clf.predict(sc.transform(fillna_npwhere(test_df[features].values,train_median[features].values))))
+    env.predict(sample_prediction_df)
