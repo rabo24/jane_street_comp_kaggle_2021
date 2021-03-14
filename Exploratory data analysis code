@@ -1,0 +1,206 @@
+
+
+import os
+for dirname, _, filenames in os.walk('/kaggle/input'):
+    for filename in filenames:
+        print(os.path.join(dirname, filename))
+
+import numpy as np
+import pandas as pd
+pd.set_option('display.max_rows', None)
+pd.set_option('display.max_columns', None)
+# plotting stuff
+import matplotlib.pyplot as plt
+import seaborn as sns
+import plotly.express as px
+import plotly.graph_objects as go
+colorMap = sns.light_palette("blue", as_cmap=True)
+import datatable as dt
+# misc
+import missingno as msno
+# system
+import warnings
+warnings.filterwarnings('ignore')
+# garbage collector to keep RAM in check
+import gc  
+import matplotlib.gridspec as gridspec
+# defining functions, not sure exactly what this is but it appears its data visualization. also from pakistan EDA quant
+from scipy import stats
+def r2(x, y):
+    return stats.pearsonr(x, y)[0] ** 2
+
+import seaborn as sns
+# not sure what this code below does 01/20/21
+class myjoint(sns.JointGrid):
+    def __init__(self, x, y, data=None,height=7, ratio=5, space=.2,
+                 dropna=True, xlim=None, ylim=None, size=None):
+        super(myjoint, self).__init__(x, y, data,height, ratio, space,
+                 dropna, xlim, ylim, size)
+        plt.close(2)
+        # Set up the subplot grid
+        self.ax_joint = f.add_subplot(gs[1:, :-1])
+        self.ax_marg_x = f.add_subplot(gs[0, :-1], sharex=self.ax_joint)
+        self.ax_marg_y = f.add_subplot(gs[1:, -1], sharey=self.ax_joint)
+
+        # Turn off tick visibility for the measure axis on the marginal plots
+        plt.setp(self.ax_marg_x.get_xticklabels(), visible=False)
+        plt.setp(self.ax_marg_y.get_yticklabels(), visible=False)
+
+#importing datasets and features my way instead of Paki quants way, something to watch out for
+train_data = pd.read_csv("../input/jane-street-market-prediction/train.csv", index_col = 'ts_id')
+features_data = pd.read_csv("../input/jane-street-market-prediction/features.csv", index_col = 'feature')
+example_sample_submission_data = pd.read_csv("../input/jane-street-market-prediction/example_sample_submission.csv",index_col = 'ts_id')
+example_test = pd.read_csv("../input/jane-street-market-prediction/example_test.csv",index_col = 'ts_id')
+
+train_data.head()
+train_data.describe()
+example_sample_submission_data.head()
+example_test.head()
+
+
+fig, ax = plt.subplots(figsize=(15, 5))
+balance= pd.Series(train_data['resp']).cumsum()
+ax.set_xlabel ("Trade", fontsize=18)
+ax.set_ylabel ("Cumulative return", fontsize=18);
+balance.plot(lw=3);
+
+# copy and pasted this graph code from Paki quant, this one shows graphs of the 4 different responses(time horizons) vs cum return
+fig, ax = plt.subplots(figsize=(15, 5))
+balance= pd.Series(train_data['resp']).cumsum()
+resp_1= pd.Series(train_data['resp_1']).cumsum()
+resp_2= pd.Series(train_data['resp_2']).cumsum()
+resp_3= pd.Series(train_data['resp_3']).cumsum()
+resp_4= pd.Series(train_data['resp_4']).cumsum()
+ax.set_xlabel ("Trade", fontsize=18)
+ax.set_title ("Cumulative return of resp", fontsize=18)
+balance.plot(lw=3)
+resp_1.plot(lw=3)
+resp_2.plot(lw=3)
+resp_3.plot(lw=3)
+resp_4.plot(lw=3)
+plt.legend(loc="upper left");
+
+# copy and pasted this graph code from Paki quant, this one shows graphs of resp and time horizons of 4 and 3 vs cum return
+fig, ax = plt.subplots(figsize=(15, 5))
+balance= pd.Series(train_data['resp']).cumsum()
+resp_4= pd.Series(train_data['resp_4']).cumsum() 
+resp_3= pd.Series(train_data['resp_3']).cumsum()
+ax.set_xlabel ("Trade", fontsize=18)
+ax.set_title ("Cumulative return of resp and time horizons 4 and 3 (500 days)", fontsize=18)
+balance.plot(lw=3)
+resp_4.plot(lw=3) 
+resp_3.plot(lw=3)
+plt.legend(loc="upper left");
+
+# copy and pasted this graph code from Paki quant, this one shows graphs of resp and weighted trend
+fig, ax = plt.subplots(figsize=(15, 5))
+balance= pd.Series(train_data['resp']).cumsum()
+weighted_trend= pd.Series(train_data['weight']*train_data['resp'],name='weighted_trend').cumsum()  
+ax.set_xlabel ("Trade", fontsize=18)
+ax.set_title ("Cumulative return of resp and weighted_trend", fontsize=18)
+balance.plot(lw=3)
+weighted_trend.plot(lw=3) 
+plt.legend(loc="upper left");
+
+# Taking one day sample data from train dataset date 1
+#paki quant: Due to itraday trading patterns in High Frequency Algorithmic Trading.So thats why i have decided to look at only one data of data for my Explaintory Data Analysis
+sample_train_data = train_data.query('date == 1')
+sample_train_data.describe()
+
+n_features = 60
+nan_val = train_data.isna().sum()[train_data.isna().sum() > 0].sort_values(ascending=False)
+print(nan_val)
+fig, axs = plt.subplots(figsize=(10, 10))
+sns.barplot(y = nan_val.index[0:n_features], 
+            x = nan_val.values[0:n_features], 
+            alpha = 0.8
+           )
+plt.title('Missing values of train dataset')
+plt.xlabel('# of Missing values')
+plt.show()
+
+#Finding out the features with missing values more than 10%
+null = sample_train_data.isnull().sum()
+nulls_fl = list(null[null >(0.1 * len(sample_train_data))].index)
+nulls_fl
+print("Number of features with null values:",np.sum(train_data.isna().sum()>0))
+Number of features with null values: 88
+#Here i am using median value to replace missing values as Median is not affected by outliers.
+#Missing Data Handling
+sample_train_data = sample_train_data.apply(lambda x: x.fillna(x.mean()),axis=0)
+print("Number of features with null values:",np.sum(sample_train_data.isna().sum()>0))
+Number of features with null values: 0
+# paki quant "Now we can take a bird's-eye view of features distributions"
+# personal note, for the feature analysis he is taking all rows of the sample set but the columns start at column 7 to the end of the set
+sample_train_data.iloc[:,7:-2].hist(bins=100,figsize=(30,74),layout=(35,4));
+
+# paki quant :Now we make a boxplot grid again with customized .1% : 99.9% whiskers of sample data.
+#not sure if this is really necessary for my purposes
+featstr = [i for i in train_data.columns[7:-2]]
+fig = plt.figure(figsize=(20,80))
+fig.suptitle('Features Box plot with 0.1% 99.9% whiskers',fontsize=22, y=.89)
+grid =  gridspec.GridSpec(29,4,figure=fig,hspace=.5,wspace=.05)
+counter = 0
+for i in range(29):
+    for j in range(4):
+        subf = fig.add_subplot(grid[i, j]);
+        sns.boxplot(x= sample_train_data[featstr[counter]],saturation=.5,color= 'blue', ax= subf,width=.5,whis=(.1,99.9));
+        subf.set_xlabel('')
+        subf.set_title('{}'.format(featstr[counter]),fontsize=16)
+        counter += 1
+        gc.collect();
+
+# Paki quant: analyze the distribution of the feature weight
+sns.set(rc={'figure.figsize':(10,5)})
+ax = sns.distplot(sample_train_data["weight"],color='green')
+
+# some weight scatterplot stuff
+y = sns.JointGrid(data=sample_train_data, x="weight", y="resp")
+y.plot_joint(sns.scatterplot, s=100, alpha=.5)
+y.plot_marginals(sns.distplot, kde=True,color='orange')
+<seaborn.axisgrid.JointGrid at 0x7f4bdb679690>
+
+# some more weight scatterplot stuffs: weight n response correlation for sample set
+sns.scatterplot(data=sample_train_data, x='resp',y='weight', color= 'green', alpha=.3)
+plt.title('Resp vs Weight\ncorrelation={}'.format(round(sample_train_data.weight.corr(sample_train_data.resp),4)));
+
+# some more weight scatterplot stuffs: weight n response correlation for full training set
+sns.scatterplot(data=train_data, x='resp',y='weight', color= 'blue', alpha=.3)
+plt.title('Resp vs Weight\ncorrelation={}'.format(round(train_data.weight.corr(train_data.resp),4)))
+Text(0.5, 1.0, 'Resp vs Weight\ncorrelation=-0.0069')
+
+Paki quant: Lower weight trades have a much higher dispersion in resp. This implies that weight is some kind of predictor of future return volatility.
+
+ 
+
+
+sample_train_data.iloc[:,2:7].hist(bins=100,figsize=(20,20),color='#ff6645');
+
+# Analysis :quant: Distribution is that all of these resp features are perfectly zero reverted
+
+#birds eye view of resp features from quant
+sns.pairplot(sample_train_data[['resp_1', 'resp_2', 'resp_3', 'resp_4', 'resp']],corner=True);
+
+#correlation of charts of resp features: paki quant
+sns.heatmap(sample_train_data[['resp','resp_1','resp_2','resp_3','resp_4']].corr(), annot = True)
+
+sns.heatmap(sample_train_data[['resp','resp_1','resp_2','resp_3','resp_4','weight']].corr(), annot = True, vmin=-1, vmax=1, center= 0)
+<matplotlib.axes._subplots.AxesSubplot at 0x7f4bd05870d0>
+
+# quant: Coorelation charts of resp with features list having missing values more then 10%**
+sample_train_data[['resp','resp_1','resp_2','resp_3','resp_4','weight']+nulls_fl].corr().style.background_gradient(cmap='coolwarm')
+
+
+#  quant: Features and resp Correlation
+respcorr =  pd.Series([train_data.resp.corr(train_data[i]) for i in featstr],index=featstr)
+
+fig = px.bar(respcorr,color = respcorr, color_continuous_scale=['red','blue'], title= 'Features Correlation with Resp')
+fig.layout.xaxis.tickangle = 300
+fig.layout.xaxis. dtick = 5
+fig.layout.xaxis.title = ''
+fig.layout.yaxis.title = 'pearson correlation'
+fig.update(layout_coloraxis_showscale=False)
+fig.show();
+pq: we see that features are not really correlated to resp
+
+ 
